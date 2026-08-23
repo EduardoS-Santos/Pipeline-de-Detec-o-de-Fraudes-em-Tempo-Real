@@ -1,32 +1,20 @@
 package com.spark.transaction.producer;
 
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-import java.util.Random;
-import java.util.UUID;
-
-@Service
+@Component
 public class TransactionProducer {
 
-    @Autowired
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
-    // Dispara a cada 1 segundo (1000 ms)
-    @Scheduled(fixedRate = 1000)
-    public void generateTransaction() {
-        String transactionJson = String.format(
-            "{\"transaction_id\":\"%s\", \"user_id\":\"%s\", \"amount\":%.2f, \"timestamp\":%d}",
-            UUID.randomUUID().toString(),
-            "USER_" + new Random().nextInt(100),
-            100 + (15000 - 100) * new Random().nextDouble(),
-            System.currentTimeMillis()
-        );
-
-        kafkaTemplate.send("transacoes-brutas", transactionJson);
-        System.out.println("Enviado: " + transactionJson);
+    public TransactionProducer(KafkaTemplate<String, String> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
     }
-} 
+
+    public void sendTransaction(String userId, String jsonTransaction) {
+        // Envia para o tópico 'transacoes.brutas' usando userId como Key
+        kafkaTemplate.send("transacoes.brutas", userId, jsonTransaction);
+        System.out.println("📤 Transação enviada para transacoes.brutas: " + jsonTransaction);
+    }
+}

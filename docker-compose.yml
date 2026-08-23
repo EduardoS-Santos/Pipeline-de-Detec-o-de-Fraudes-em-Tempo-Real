@@ -16,6 +16,9 @@ services:
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      # ⚙️ Configurações para garantir as 3 partições padrão por tópico
+      - KAFKA_NUM_PARTITIONS=3
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
 
   # --- 2. INFRAESTRUTURA DE ARMAZENAMENTO (HADOOP HDFS) ---
   namenode:
@@ -43,15 +46,53 @@ services:
 
   # --- 3. PRODUTOR (SPRING BOOT - JAVA) ---
   producer-spring:
-    build: ./transaction.producer # Pasta onde fica o código Java e o Dockerfile do Spring
+    build: ./transaction.producer
     container_name: producer-spring
     depends_on:
       - kafka
 
-  # --- 4. CONSUMIDOR (PYSPARK - PYTHON) ---
-  consumer-spark:
-    build: ./consumer.app # Pasta onde fica o código Python e o Dockerfile do Spark
-    container_name: consumer-pyspark
+  # --- 4. MICROSSERVIÇOS DE PROCESSAMENTO (PYTHON LEVE) ---
+  # Serviço 1: Lê de 'transacoes.brutas' e distribui entre 'transacoes.ok' e 'transacoes.fraud'
+  fraud-router:
+    build: ./router.app
+    container_name: service-fraud-router
+    depends_on:
+      - kafka
+    restart: always
+
+  # Serviço 2: Lê apenas 'transacoes.fraud' e dispara os alertas no n8n
+  n8n-notifier:
+    build: ./notifier.app
+    container_name: service-n8n-notifier
+    depends_on:
+      - kafka
+      - fraud-router
+    restart: always
+
+  # Serviço 3: Lê 'transacoes.ok' e grava no HDFS em lote
+  hdfs-writer:
+    build: ./hdfs_writer
+    container_name: service-hdfs-writer
     depends_on:
       - kafka
       - namenode
+    restart: always
+
+  # --- 5. ORQUESTRADOR E IA (N8N) ---
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n-orchestrator
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - n8n-notifier
+
+volumes:
+  n8n_data:
