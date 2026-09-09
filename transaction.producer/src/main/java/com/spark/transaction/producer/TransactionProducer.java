@@ -15,6 +15,5 @@ public class TransactionProducer {
     public void sendTransaction(String userId, String jsonTransaction) {
         // Envia para o tópico 'transacoes.brutas' usando userId como Key
         kafkaTemplate.send("transacoes.brutas", userId, jsonTransaction);
-        System.out.println("📤 Transação enviada para transacoes.brutas: " + jsonTransaction);
     }
 }

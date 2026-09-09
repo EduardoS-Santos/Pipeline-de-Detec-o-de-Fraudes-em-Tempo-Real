@@ -16,9 +16,11 @@ services:
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      # ⚙️ Configurações para garantir as 3 partições padrão por tópico
-      - KAFKA_NUM_PARTITIONS=3
+      # ⚙️ Configurações para garantir as 12 partições padrão por tópico
+      - KAFKA_NUM_PARTITIONS=12
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+      # Garante memória RAM dedicada ao JVM do Kafka
+      - KAFKA_HEAP_OPTS=-Xmx4G -Xms4G
 
   # --- 2. INFRAESTRUTURA DE ARMAZENAMENTO (HADOOP HDFS) ---
   namenode:
@@ -33,6 +35,7 @@ services:
       - CORE_CONF_hadoop_http_staticuser_user=root
       - HDFS_CONF_dfs_replication=1
       - HDFS_CONF_dfs_permissions_enabled=false
+      - HDFS_CONF_dfs_blocksize=134217728
 
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
@@ -43,6 +46,7 @@ services:
       - CORE_CONF_hadoop_http_staticuser_user=root
       - HDFS_CONF_dfs_replication=1
       - HDFS_CONF_dfs_permissions_enabled=false
+      - HDFS_CONF_dfs_blocksize=134217728
 
   # --- 3. PRODUTOR (SPRING BOOT - JAVA) ---
   producer-spring:
@@ -55,7 +59,6 @@ services:
   # Serviço 1: Lê de 'transacoes.brutas' e distribui entre 'transacoes.ok' e 'transacoes.fraud'
   fraud-router:
     build: ./router.app
-    container_name: service-fraud-router
     depends_on:
       - kafka
     restart: always
@@ -72,7 +75,6 @@ services:
   # Serviço 3: Lê 'transacoes.ok' e grava no HDFS em lote
   hdfs-writer:
     build: ./hdfs_writer
-    container_name: service-hdfs-writer
     depends_on:
       - kafka
       - namenode
