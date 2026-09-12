@@ -16,10 +16,8 @@ services:
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      # ⚙️ Configurações para garantir as 12 partições padrão por tópico
       - KAFKA_NUM_PARTITIONS=12
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
-      # Garante memória RAM dedicada ao JVM do Kafka
       - KAFKA_HEAP_OPTS=-Xmx4G -Xms4G
 
   # --- 2. INFRAESTRUTURA DE ARMAZENAMENTO (HADOOP HDFS) ---
@@ -30,7 +28,7 @@ services:
       - "9870:9870"
       - "9000:9000"
     environment:
-      - CLUSTER_NAME=test
+      - CLUSTER_NAME=transactions
       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
       - CORE_CONF_hadoop_http_staticuser_user=root
       - HDFS_CONF_dfs_replication=1
@@ -55,46 +53,33 @@ services:
     depends_on:
       - kafka
 
-  # --- 4. MICROSSERVIÇOS DE PROCESSAMENTO (PYTHON LEVE) ---
-  # Serviço 1: Lê de 'transacoes.brutas' e distribui entre 'transacoes.ok' e 'transacoes.fraud'
+  # --- 4. MICROSSERVIÇOS DE PROCESSAMENTO (PYTHON) ---
   fraud-router:
     build: ./router.app
     depends_on:
       - kafka
     restart: always
 
-  # Serviço 2: Lê apenas 'transacoes.fraud' e dispara os alertas no n8n
-  n8n-notifier:
-    build: ./notifier.app
-    container_name: service-n8n-notifier
-    depends_on:
-      - kafka
-      - fraud-router
-    restart: always
-
-  # Serviço 3: Lê 'transacoes.ok' e grava no HDFS em lote
-  hdfs-writer:
+  # Escritor HDFS 1: Grava Transações Legítimas
+  hdfs-writer-ok:
     build: ./hdfs_writer
+    environment:
+      - KAFKA_TOPIC=transacoes.ok
+      - HDFS_TARGET_DIR=/data/transacoes_ok
+      - CONSUMER_GROUP_ID=hdfs-writer-ok-group
     depends_on:
       - kafka
       - namenode
     restart: always
 
-  # --- 5. ORQUESTRADOR E IA (N8N) ---
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: n8n-orchestrator
-    ports:
-      - "5678:5678"
+  # Escritor HDFS 2: Grava Transações Golpistas
+  hdfs-writer-fraud:
+    build: ./hdfs_writer_fraud
     environment:
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - NODE_ENV=production
-    volumes:
-      - n8n_data:/home/node/.n8n
+      - KAFKA_TOPIC=transacoes.fraud
+      - HDFS_TARGET_DIR=/data/transacoes_fraud
+      - CONSUMER_GROUP_ID=hdfs-writer-fraud-group
     depends_on:
-      - n8n-notifier
-
-volumes:
-  n8n_data:
+      - kafka
+      - namenode
+    restart: always

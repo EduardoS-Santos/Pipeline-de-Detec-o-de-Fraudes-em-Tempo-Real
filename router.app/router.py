@@ -43,7 +43,7 @@ producer = KafkaProducer(
 logging.info("⚡ Roteador de Transações Iniciado!")
 
 while True:
-    records_batch = consumer.poll(timeout_ms=1000, max_records=50)
+    records_batch = consumer.poll(timeout_ms=1000, max_records=50000)
     if not records_batch:
         continue
 
@@ -73,11 +73,11 @@ while True:
                     "amount": round(amount, 2),
                     "status": "FLAGGED_FRAUD",
                     "distance_km": dist_km,
-                    "target_email": "testenn8n2026@gmail.com",
+                    "target_email": "testenn8nn2026@gmail.com",
                     "processed_at": now_timestamp
                 }
                 producer.send('transacoes.fraud', value=payload_fraud).get(timeout=5)
-                logging.warning(f"🚨 SUSPEITA ({dist_km} km): {tx_id} -> transacoes.fraud")
+               # logging.warning(f"🚨 SUSPEITA ({dist_km} km): {tx_id} -> transacoes.fraud")
             else:
                 # Schema Transações Aprovadas
                 payload_ok = {
@@ -89,6 +89,6 @@ while True:
                     "processed_at": now_timestamp
                 }
                 producer.send('transacoes.ok', value=payload_ok).get(timeout=5)
-                logging.info(f"✅ APROVADA ({dist_km} km): {tx_id} -> transacoes.ok")
+                #logging.info(f"✅ APROVADA ({dist_km} km): {tx_id} -> transacoes.ok")
 
         consumer.commit()

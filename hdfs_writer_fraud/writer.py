@@ -17,10 +17,10 @@ GROUP_ID = os.getenv('CONSUMER_GROUP_ID', 'hdfs-writer-group')
 
 # --- CONFIGURAÇÕES DE ALTA PERFORMANCE PARA BI / HDFS ---
 # Acumula até 500.000 registros por lote Parquet
-BATCH_SIZE = int(500000)  
+BATCH_SIZE = int(10000)  
 # Ou aguarda até 5 minutos (300 segundos) para fazer o flush
-FLUSH_INTERVAL_SEC = int(300) 
- 
+FLUSH_INTERVAL_SEC = int(60) 
+
 def safe_deserializer(m):
     return json.loads(m.decode('utf-8')) if m else None
 
