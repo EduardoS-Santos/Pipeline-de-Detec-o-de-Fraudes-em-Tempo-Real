@@ -12,8 +12,8 @@ Este projeto consiste em uma arquitetura de Big Data voltada para a ingestão, c
                                │                                                          │
 ┌──────────────┐  100k TPS     │  ┌───────────────────┐        ┌───────────────────────┐  │
 │  Java App    │───────────────┼─►│ transacoes.brutas │───────┐│    transacoes.ok      │──┼──┐
-│  (Producer)  │ (Batch & LZ4) │  └───────────────────┘       ││ (Partiçoes: 12 a 24)  │  │  │
-└──────────────┘               │                              │└───────────────────────┘  │  │
+│  (Producer)  │ (Batch & LZ4) │  | (Partiçoes: 12)   |        ││ (Partiçoes: 12)  │   │  │
+└──────────────┘               │  └───────────────────┘       │└───────────────────────┘  │  │
                                └──────────────────────────────┼───────────────────────────┘  │
                                                               │                              │
                                                               ▼                              │
@@ -26,7 +26,7 @@ Este projeto consiste em uma arquitetura de Big Data voltada para a ingestão, c
                                ┌──────────────────────────────────────────────────────────┐  │
                                │  ┌───────────────────────┐                               │  │
                                │  │   transacoes.fraud    │◄──────────────────────────────┘  │
-                               │  │ (Partiçoes: 12 a 24)  │                                  │
+                               │  │ (Partiçoes: 12)  │                                  │
                                │  └───────────────────────┘                                  │
                                └──────────────────────────────┬───────────────────────────┘
                                                               │
@@ -97,8 +97,8 @@ Consumidores Python dedicados a estruturar os dados e gravá-los no HDFS, soluci
 | Métrica | Produtor Java | Routers (Worker Cluster) | Escritores HDFS |
 | :--- | :--- | :--- | :--- |
 | **Vazão Alvo** | 100.000 msgs/s | 100.000 msgs/s | ~100.000 msgs/s (agregadas) |
-| **Escala Recomendada** | 1 a 2 instâncias | 4 a 8 instâncias | 4 (OK) + 2 (Fraud) |
-| **Partições Kafka** | - | 12 a 24 partições | 12 a 24 partições |
+| **Escala Recomendada** | 1 a 2 instâncias | 4 a 6 instâncias | 4 (OK) + 2 (Fraud) |
+| **Partições Kafka(min)** | - | 12 partições | 12 partições |
 | **Formato de Saída** | JSON em Trânsito | JSON em Trânsito | Parquet (Snappy) |
 
 ---
